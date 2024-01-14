@@ -5,15 +5,18 @@
 
 import glob 
 import os 
+import re
 
 # Environment Variables
 envvars: 
     "visits_path"
 
 # Parameters
-files = glob.glob(f"{os.environ['visits_path']}/OutputData_Visits/*/*.csv")
-yearmonths = list(set(re.search(r'(\d{6})_\w+_d\d+_t\d+.csv', file).group(1) for file in files))
+yearmonths = list(set(re.search(r'(\d{6})_\w+_d\d+_t\d+.csv', x).group(1) for x in glob.glob(f"{os.environ['visits_path']}/OutputData_Visits_Clean/*.csv")))
 
+def get_files_for_yearmonth(yearmonth):
+    pattern = f"{os.environ['visits_path']}/OutputData_Visits_Clean/{yearmonth}_*_d200_t300.csv"
+    return glob.glob(pattern)
 
 rule all: 
     input: 
@@ -21,18 +24,20 @@ rule all:
 
 rule done_all:  
     input: 
-        expand(f"{os.environ['visits_path']}//Monthly_Totals/{yearmonth}_mesh6_totals.csv", yearmonth = yearmonths)
+        [f"{os.environ['visits_path']}/Monthly_Totals/{yearmonth}_mesh6_totals.csv" for yearmonth in yearmonths]
     output: 
         "all_months.txt"
     shell: 
         "touch {output}"
 
 for yearmonth in yearmonths: 
+    files_for_yearmonth = get_files_for_yearmonth(yearmonth)
+
     rule: 
         name: 
             f"{yearmonth}_monthly_totals"
         input: 
-            expand(f"{os.environ['visits_path']}/OutputData_Visits/{yearmonth}_{uuid}_d200_t300.csv")
+            files_for_yearmonth
         output: 
             f"{os.environ['visits_path']}/Monthly_Totals/{yearmonth}_mesh6_totals.csv"
         shell: 
